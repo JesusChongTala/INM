@@ -4,6 +4,20 @@ import plotly.express as px
 import numpy as np
 import json
 
+def get_axis_label(col_name, all_conc_cols):
+    """Genera una etiqueta para el eje con unidades."""
+    units = ""
+    col_name_lower = col_name.lower()
+    if 'young' in col_name_lower:
+        units = " (Pa)"
+    elif 'gravimetr' in col_name_lower:
+        units = " (%WET)"
+    elif 'transmitan' in col_name_lower: # transmitancia or transmitance
+        units = " (Transmitancia)"
+    elif col_name in all_conc_cols:
+        units = " (mL)"
+    return f"{col_name}{units}"
+
 # Cargar los diccionarios de propiedades
 try:
     hydrophilicity = json.load(open('hydrophilicity.json', 'r'))
@@ -41,6 +55,9 @@ if archivos_conc and archivos_prop:
         # --- Paso 2: Configuración Inicial ---
         st.sidebar.header("2. Variable Configuration")
         id_col = st.sidebar.selectbox("Select ID column (common in all files):", df_peek.columns)
+
+        # Obtener lista de columnas de concentración para las unidades
+        cols_conc = [c for c in df_peek.columns if c != id_col]
 
         # --- Paso 3: Calculadora de Composición ---
         st.sidebar.markdown("---") 
@@ -135,6 +152,10 @@ if archivos_conc and archivos_prop:
         
         # --- Lógica de Renderizado de Gráficos ---
 
+        # Generar etiquetas con unidades
+        x_label = get_axis_label(x_col, cols_conc)
+        y_label = get_axis_label(y_col, cols_conc)
+
         if not multi_color_cols:
             # Vista Estándar
             st.subheader(f"Chart: {y_col} vs {x_col}")
@@ -147,7 +168,11 @@ if archivos_conc and archivos_prop:
                 color='Screening_File' if len(archivos_conc) > 1 else None, 
                 hover_data=[id_col, 'Screening_File'],
                 text=id_col, 
-                title=f"Relationship: {y_col} vs {x_col}"
+                title=f"Relationship: {y_col} vs {x_col}",
+                labels={
+                    x_col: x_label,
+                    y_col: y_label
+                }
             )
             fig.update_traces(
                 textposition='top center', 
@@ -184,7 +209,11 @@ if archivos_conc and archivos_prop:
                 color_discrete_map=color_map, 
                 custom_data=['Composition_Hover'],
                 text=id_col, 
-                title="Scatter (Color = Component | Shape = Screening)"
+                title="Scatter (Color = Component | Shape = Screening)",
+                labels={
+                    x_col: x_label,
+                    y_col: y_label
+                }
             )
             fig_scatter.update_traces(
                 textposition='top center', 
@@ -201,7 +230,7 @@ if archivos_conc and archivos_prop:
                 y=multi_color_cols,
                 color_discrete_map=color_map, 
                 title="Composition Breakdown (Grouped by Screening)",
-                labels={'value': 'Concentration', 'variable': 'Component'}
+                labels={'value': 'Concentration (mL)', 'variable': 'Component'}
             )
             fig_bars.update_layout(barmode='stack', xaxis_title="Screening - Sample")
 
